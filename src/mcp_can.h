@@ -41,6 +41,7 @@ class MCP_CAN
     INT8U   MCPCS;                                                      // Chip Select pin number
     INT8U   mcpMode;                                                    // Mode to return to after configurations are performed.
     
+    __SPISettings spi_settings;
 
 /*********************************************************************************************************
  *  mcp2515 driver function 

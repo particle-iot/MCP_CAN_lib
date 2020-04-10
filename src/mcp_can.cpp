@@ -26,13 +26,22 @@
 #define spi_readwrite SPI.transfer
 #define spi_read() spi_readwrite(0x00)
 
+#if CAN_DEBUG_MODE   
+    static  Logger local_log("mcp_can");
+	#define LOGI   local_log.info
+	#define LOGE   local_log.error
+#else 
+    #define LOGI(...) 
+    #define LOGE(...)  
+#endif 
+
 /*********************************************************************************************************
 ** Function name:           mcp2515_reset
 ** Descriptions:            Performs a software reset
 *********************************************************************************************************/
 void MCP_CAN::mcp2515_reset(void)                                      
 {
-    SPI.beginTransaction(SPISettings(10000000, MSBFIRST, SPI_MODE0));
+    SPI.beginTransaction(spi_settings);
     MCP2515_SELECT();
     spi_readwrite(MCP_RESET);
     MCP2515_UNSELECT();
@@ -48,7 +57,7 @@ INT8U MCP_CAN::mcp2515_readRegister(const INT8U address)
 {
     INT8U ret;
 
-    SPI.beginTransaction(SPISettings(10000000, MSBFIRST, SPI_MODE0));
+    SPI.beginTransaction(spi_settings);
     MCP2515_SELECT();
     spi_readwrite(MCP_READ);
     spi_readwrite(address);
@@ -66,7 +75,7 @@ INT8U MCP_CAN::mcp2515_readRegister(const INT8U address)
 void MCP_CAN::mcp2515_readRegisterS(const INT8U address, INT8U values[], const INT8U n)
 {
     INT8U i;
-    SPI.beginTransaction(SPISettings(10000000, MSBFIRST, SPI_MODE0));
+    SPI.beginTransaction(spi_settings);
     MCP2515_SELECT();
     spi_readwrite(MCP_READ);
     spi_readwrite(address);
@@ -84,7 +93,7 @@ void MCP_CAN::mcp2515_readRegisterS(const INT8U address, INT8U values[], const I
 *********************************************************************************************************/
 void MCP_CAN::mcp2515_setRegister(const INT8U address, const INT8U value)
 {
-    SPI.beginTransaction(SPISettings(10000000, MSBFIRST, SPI_MODE0));
+    SPI.beginTransaction(spi_settings);
     MCP2515_SELECT();
     spi_readwrite(MCP_WRITE);
     spi_readwrite(address);
@@ -100,7 +109,7 @@ void MCP_CAN::mcp2515_setRegister(const INT8U address, const INT8U value)
 void MCP_CAN::mcp2515_setRegisterS(const INT8U address, const INT8U values[], const INT8U n)
 {
     INT8U i;
-    SPI.beginTransaction(SPISettings(10000000, MSBFIRST, SPI_MODE0));
+    SPI.beginTransaction(spi_settings);
     MCP2515_SELECT();
     spi_readwrite(MCP_WRITE);
     spi_readwrite(address);
@@ -118,7 +127,7 @@ void MCP_CAN::mcp2515_setRegisterS(const INT8U address, const INT8U values[], co
 *********************************************************************************************************/
 void MCP_CAN::mcp2515_modifyRegister(const INT8U address, const INT8U mask, const INT8U data)
 {
-    SPI.beginTransaction(SPISettings(10000000, MSBFIRST, SPI_MODE0));
+    SPI.beginTransaction(spi_settings);
     MCP2515_SELECT();
     spi_readwrite(MCP_BITMOD);
     spi_readwrite(address);
@@ -135,7 +144,7 @@ void MCP_CAN::mcp2515_modifyRegister(const INT8U address, const INT8U mask, cons
 INT8U MCP_CAN::mcp2515_readStatus(void)                             
 {
     INT8U i;
-    SPI.beginTransaction(SPISettings(10000000, MSBFIRST, SPI_MODE0));
+    SPI.beginTransaction(spi_settings);
     MCP2515_SELECT();
     spi_readwrite(MCP_READ_STATUS);
     i = spi_read();
@@ -502,26 +511,18 @@ INT8U MCP_CAN::mcp2515_init(const INT8U canIDMode, const INT8U canSpeed, const I
     res = mcp2515_setCANCTRL_Mode(MODE_CONFIG);
     if(res > 0)
     {
-#if DEBUG_MODE
-      Serial.print("Entering Configuration Mode Failure...\r\n"); 
-#endif
+      LOGI("Entering Configuration Mode Failure..."); 
       return res;
     }
-#if DEBUG_MODE
-    Serial.print("Entering Configuration Mode Successful!\r\n");
-#endif
+    LOGI("Entering Configuration Mode Successful!");
 
     // Set Baudrate
     if(mcp2515_configRate(canSpeed, canClock))
     {
-#if DEBUG_MODE
-      Serial.print("Setting Baudrate Failure...\r\n");
-#endif
+      LOGI("Setting Baudrate Failure...");
       return res;
     }
-#if DEBUG_MODE
-    Serial.print("Setting Baudrate Successful!\r\n");
-#endif
+    LOGI("Setting Baudrate Successful!");
 
     if ( res == MCP2515_OK ) {
 
@@ -571,9 +572,7 @@ INT8U MCP_CAN::mcp2515_init(const INT8U canIDMode, const INT8U canSpeed, const I
             break;
     
             default:
-#if DEBUG_MODE        
-            Serial.print("`Setting ID Mode Failure...\r\n");
-#endif           
+            LOGI("`Setting ID Mode Failure...");
             return MCP2515_FAIL;
             break;
 }    
@@ -582,9 +581,7 @@ INT8U MCP_CAN::mcp2515_init(const INT8U canIDMode, const INT8U canSpeed, const I
         res = mcp2515_setCANCTRL_Mode(mcpMode);                                                                
         if(res)
         {
-#if DEBUG_MODE        
-          Serial.print("Returning to Previous Mode Failure...\r\n");
-#endif           
+          LOGI("Returning to Previous Mode Failure...");
           return res;
         }
 
@@ -756,6 +753,7 @@ INT8U MCP_CAN::mcp2515_getNextFreeTXBuf(INT8U *txbuf_n)                 /* get N
 *********************************************************************************************************/
 MCP_CAN::MCP_CAN(INT8U _CS)
 {
+    spi_settings = __SPISettings(10000000, MSBFIRST, SPI_MODE0);
     MCPCS = _CS;
     MCP2515_UNSELECT();
     pinMode(MCPCS, OUTPUT);
@@ -784,15 +782,11 @@ INT8U MCP_CAN::begin(INT8U idmodeset, INT8U speedset, INT8U clockset)
 INT8U MCP_CAN::init_Mask(INT8U num, INT8U ext, INT32U ulData)
 {
     INT8U res = MCP2515_OK;
-#if DEBUG_MODE
-    Serial.print("Starting to Set Mask!\r\n");
-#endif
+    LOGI("Starting to Set Mask!");
     res = mcp2515_setCANCTRL_Mode(MODE_CONFIG);
     if(res > 0){
-#if DEBUG_MODE
-	Serial.print("Entering Configuration Mode Failure...\r\n"); 
-#endif
-	return res;
+	    LOGI("Entering Configuration Mode Failure..."); 
+	    return res;
      }
     
     if (num == 0){
@@ -806,14 +800,10 @@ INT8U MCP_CAN::init_Mask(INT8U num, INT8U ext, INT32U ulData)
     
     res = mcp2515_setCANCTRL_Mode(mcpMode);
     if(res > 0){
-#if DEBUG_MODE
-	Serial.print("Entering Previous Mode Failure...\r\nSetting Mask Failure...\r\n"); 
-#endif
-	return res;
+	    LOGI("Entering Previous Mode Failure...\r\nSetting Mask Failure..."); 
+	    return res;
     }
-#if DEBUG_MODE
-    Serial.print("Setting Mask Successful!\r\n");
-#endif
+    LOGI("Setting Mask Successful!");
     return res;
 }
 
@@ -825,14 +815,10 @@ INT8U MCP_CAN::init_Mask(INT8U num, INT32U ulData)
 {
     INT8U res = MCP2515_OK;
     INT8U ext = 0;
-#if DEBUG_MODE
-    Serial.print("Starting to Set Mask!\r\n");
-#endif
+    LOGI("Starting to Set Mask!");
     res = mcp2515_setCANCTRL_Mode(MODE_CONFIG);
     if(res > 0){
-#if DEBUG_MODE
-    Serial.print("Entering Configuration Mode Failure...\r\n"); 
-#endif
+        LOGI("Entering Configuration Mode Failure..."); 
   return res;
 }
     
@@ -850,14 +836,10 @@ INT8U MCP_CAN::init_Mask(INT8U num, INT32U ulData)
     
     res = mcp2515_setCANCTRL_Mode(mcpMode);
     if(res > 0){
-#if DEBUG_MODE
-    Serial.print("Entering Previous Mode Failure...\r\nSetting Mask Failure...\r\n"); 
-#endif
+    LOGI("Entering Previous Mode Failure...\r\nSetting Mask Failure..."); 
     return res;
   }
-#if DEBUG_MODE
-    Serial.print("Setting Mask Successful!\r\n");
-#endif
+    LOGI("Setting Mask Successful!");
     return res;
 }
 
@@ -868,15 +850,11 @@ INT8U MCP_CAN::init_Mask(INT8U num, INT32U ulData)
 INT8U MCP_CAN::init_Filt(INT8U num, INT8U ext, INT32U ulData)
 {
     INT8U res = MCP2515_OK;
-#if DEBUG_MODE
-    Serial.print("Starting to Set Filter!\r\n");
-#endif
+    LOGI("Starting to Set Filter!");
     res = mcp2515_setCANCTRL_Mode(MODE_CONFIG);
     if(res > 0)
     {
-#if DEBUG_MODE
-      Serial.print("Enter Configuration Mode Failure...\r\n"); 
-#endif
+      LOGI("Enter Configuration Mode Failure..."); 
       return res;
     }
     
@@ -913,14 +891,11 @@ INT8U MCP_CAN::init_Filt(INT8U num, INT8U ext, INT32U ulData)
     res = mcp2515_setCANCTRL_Mode(mcpMode);
     if(res > 0)
     {
-#if DEBUG_MODE
-      Serial.print("Entering Previous Mode Failure...\r\nSetting Filter Failure...\r\n"); 
-#endif
+      LOGI("Entering Previous Mode Failure..."); 
+      LOGI("Setting Filter Failure..."); 
       return res;
     }
-#if DEBUG_MODE
-    Serial.print("Setting Filter Successfull!\r\n");
-#endif
+    LOGI("Setting Filter Successfull!");
     
     return res;
 }
@@ -934,15 +909,11 @@ INT8U MCP_CAN::init_Filt(INT8U num, INT32U ulData)
     INT8U res = MCP2515_OK;
     INT8U ext = 0;
     
-#if DEBUG_MODE
-    Serial.print("Starting to Set Filter!\r\n");
-#endif
+    LOGI("Starting to Set Filter!");
     res = mcp2515_setCANCTRL_Mode(MODE_CONFIG);
     if(res > 0)
     {
-#if DEBUG_MODE
-      Serial.print("Enter Configuration Mode Failure...\r\n"); 
-#endif
+      LOGI("Enter Configuration Mode Failure..."); 
       return res;
     }
     
@@ -982,14 +953,10 @@ INT8U MCP_CAN::init_Filt(INT8U num, INT32U ulData)
     res = mcp2515_setCANCTRL_Mode(mcpMode);
     if(res > 0)
     {
-#if DEBUG_MODE
-      Serial.print("Entering Previous Mode Failure...\r\nSetting Filter Failure...\r\n"); 
-#endif
+      LOGI("Entering Previous Mode Failure...\r\nSetting Filter Failure..."); 
       return res;
     }
-#if DEBUG_MODE
-    Serial.print("Setting Filter Successfull!\r\n");
-#endif
+    LOGI("Setting Filter Successfull!");
     
     return res;
 }

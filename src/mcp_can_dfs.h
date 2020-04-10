@@ -24,8 +24,7 @@
 #ifndef _MCP2515DFS_H_
 #define _MCP2515DFS_H_
 
-#include <Arduino.h>
-#include <SPI.h>
+#include "Particle.h"
 #include <inttypes.h>
 
 #ifndef INT32U
@@ -37,7 +36,7 @@
 #endif
 
 // if print debug information
-#define DEBUG_MODE 1
+#define CAN_DEBUG_MODE 0
 
 /*
  *   Begin mt
