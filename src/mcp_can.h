@@ -113,6 +113,7 @@ public:
     INT8U init_Filt(INT8U num, INT8U ext, INT32U ulData);               // Initialize Filter(s)
     INT8U init_Filt(INT8U num, INT32U ulData);                          // Initialize Filter(s)
     INT8U setMode(INT8U opMode);                                        // Set operational mode
+    INT8U getCANStatus();                                               // Get CAN status
     INT8U sendMsgBuf(INT32U id, INT8U ext, INT8U len, INT8U *buf);      // Send message to transmit buffer
     INT8U sendMsgBuf(INT32U id, INT8U len, INT8U *buf);                 // Send message to transmit buffer
     INT8U readMsgBuf(INT32U *id, INT8U *ext, INT8U *len, INT8U *buf);   // Read message from receive buffer
